@@ -1,0 +1,10 @@
+<h1>Logged in as {{ request.user.username }}</h1>
+<!-- templates/profile.html -->
+<h1>Profilod</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form}}
+    <button type="submit">Mentés</button>
+</form>
+
+<a href="{% url 'account_logout' %}">Logout</a>
