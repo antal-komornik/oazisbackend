@@ -16,6 +16,7 @@ router.register(r'menu-items', MenuItemViewSet, basename='menuitem')
 router.register(r'daily-menu', DailyMenuViewSet)
 
 
+
 urlpatterns = [
     path('api/data/admin/', admin.site.urls),
     path('api/data/', include(router.urls)),

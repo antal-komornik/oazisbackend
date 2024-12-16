@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'menuapi',
     'userauth',
     'dashboard',
+    'order',
 ]
 
 MIDDLEWARE = [
@@ -114,7 +115,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+SITE_ID = 1
 # Internationalization
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
@@ -173,7 +174,7 @@ ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_REQUIRED = True
 
 # Sikeres bejelentkezés után
-LOGIN_REDIRECT_URL = '/api/data/auth/profile/'  # vagy bármilyen más URL
+LOGIN_REDIRECT_URL = '/api/data/auth/'  # vagy bármilyen más URL
 
 # Kijelentkezés után
 LOGOUT_REDIRECT_URL = '/api/data/auth/'

@@ -2,11 +2,14 @@ from rest_framework import viewsets, filters, generics, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from .models import Category, MenuItem, DailyMenu, Ingredient
+from .models import Category, MenuItem, DailyMenu, Ingredient, PizzaPricing
 from .serializers import CategorySerializer, MenuItemSerializer, DailyMenuSerializer, IngredientSerializer
 from rest_framework.decorators import api_view
 from django.db.models import Prefetch
 from collections import OrderedDict
+from rest_framework.decorators import action
+
+
 
 # @api_view(['GET'])
 # def get_formatted_menu(request):
@@ -83,11 +86,24 @@ def get_formatted_menu(request):
         discount_start = item.discount_start
         discount_end = item.discount_end
         slug = item.slug
+        is_pizza = item.is_pizza
+        prices = {}
+        if item.is_pizza and hasattr(item, 'pizza_pricing'):
+            prices = {
+                # "prices_32": item.pizza_pricing.price_32,
+                # "prices_40": item.pizza_pricing.price_40,
+                # "prices_60": item.pizza_pricing.price_60
+                "32": item.pizza_pricing.price_32,
+                "40": item.pizza_pricing.price_40,
+                "60": item.pizza_pricing.price_60
+            }
+
+
         # Menüelem formázása
         formatted_item = {
             'id': item.id,
             'name': item.name,
-            'price': float(item.current_price),
+            'price': item.current_price,
             'image': request.build_absolute_uri(item.image.url) if item.image else '/images/kv.jpg',
             'description': item.description or '',
             'ingredients': ingredients_list,
@@ -95,7 +111,13 @@ def get_formatted_menu(request):
             'discount_start': discount_start,
             'discount_end': discount_end,
             'slug': slug,
+            'is_pizza': is_pizza
+
         }
+
+        if item.is_pizza:
+            formatted_item['prices'] = prices
+
 
         # Ha valami miatt a kategória még nem létezik (nem kellene előfordulnia)
         if category_name not in formatted_menu:
@@ -168,9 +190,7 @@ class MenuItemViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(is_hidden=False)
 
         return queryset
-# class DailyMenuViewSet(viewsets.ModelViewSet):
-#     queryset = DailyMenu.objects.all()
-#     serializer_class = DailyMenuSerializer
+
 
 
 class DailyMenuViewSet(viewsets.ModelViewSet):
@@ -186,8 +206,22 @@ class DailyMenuViewSet(viewsets.ModelViewSet):
         # Ha speciális formázásra van szükség az egyedi lekérésnél
         response = super().retrieve(request, *args, **kwargs)
         return response
-# Új nézetek a keresésekhez
 
+
+# class MenuItemSearchView(generics.ListAPIView):
+#     serializer_class = MenuItemSerializer
+#     filter_backends = [filters.SearchFilter]
+#     search_fields = ['name', 'description', 'ingredients__name']
+
+#     def get_queryset(self):
+#         queryset = MenuItem.objects.all()
+#         show_hidden = self.request.query_params.get(
+#             'show_hidden', 'false').lower() == 'true'
+
+#         if not show_hidden:
+#             queryset = queryset.filter(is_hidden=False)
+
+#         return queryset
 
 class MenuItemSearchView(generics.ListAPIView):
     serializer_class = MenuItemSerializer
@@ -204,6 +238,28 @@ class MenuItemSearchView(generics.ListAPIView):
 
         return queryset
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+
+        # Formázott válasz létrehozása
+        formatted_data = []
+        for item in serializer.data:
+            formatted_item = item.copy()
+
+            # Pizza árak formázása
+            if item.get('is_pizza', False) and 'pizza_pricing' in item:
+                formatted_item['prices'] = {
+                    "32": item['pizza_pricing']['price_32'],
+                    "40": item['pizza_pricing']['price_40'],
+                    "60": item['pizza_pricing']['price_60']
+                }
+                # Töröljük az eredeti pizza_pricing mezőt
+                formatted_item.pop('pizza_pricing', None)
+
+            formatted_data.append(formatted_item)
+
+        return Response(formatted_data)
 
 class MenuItemCategoryFilterView(generics.ListAPIView):
     serializer_class = MenuItemSerializer
